@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 void main() => runApp(MyApp());
 
@@ -50,6 +51,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   DateTime _lastSignedInAt = null;
   FirebaseUser _user;
+  GoogleMapController _mapController;
 
   void _setUser(FirebaseUser user) {
     setState(() {
@@ -85,6 +87,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _handleSignOut() async {
     return await _auth.signOut();
+  }
+
+  void _handleMapCreate(GoogleMapController controller) {
+    setState(() {
+      _mapController = controller;
+    });
   }
 
   void _incrementCounter() {
@@ -169,6 +177,18 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text(
               '最終ログイン日時: $_lastSignedInAt',
+            ),
+            Container(
+              height: MediaQuery.of(context).size.height / 2,
+              width: MediaQuery.of(context).size.width,
+              child: GoogleMap(
+                onMapCreated: _handleMapCreate,
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(35.6580339,139.7016358),
+                  zoom: 17.0,
+                ),
+                myLocationEnabled: true,
+              ),
             )
           ],
         ),
