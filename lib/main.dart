@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 void main() => runApp(MyApp());
 
@@ -45,6 +47,31 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  FirebaseUser _user;
+
+  void _setUser(FirebaseUser user) {
+    setState(() {
+      _user = user;
+    });
+  }
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<FirebaseUser> _handleSignIn() async {
+    final GoogleSignInAccount googleUser = await _googleSignIn.signIn();
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final AuthCredential credential = GoogleAuthProvider.getCredential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken
+    );
+    final FirebaseUser user = await _auth.signInWithCredential(credential);
+    return user;
+  }
+
+  Future<void> _handleSignOut() async {
+    return await _auth.signOut();
+  }
 
   void _incrementCounter() {
     setState(() {
@@ -55,6 +82,25 @@ class _MyHomePageState extends State<MyHomePage> {
       // called again, and so nothing would appear to happen.
       _counter++;
     });
+  }
+
+  Widget googleAuthBtn() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          RaisedButton(
+            color: Colors.primaries[0],
+            onPressed: () {
+              _handleSignIn()
+                .then((FirebaseUser user) => _setUser(user))
+                .catchError((e) => print(e));
+            },
+            child: Text('Googleアカウントでログイン'),
+          )
+        ],
+      ),
+    );
   }
 
   @override
@@ -71,7 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
+      body: _user == null ? googleAuthBtn() : Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
         child: Column(
@@ -98,6 +144,15 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.display1,
             ),
+            RaisedButton(
+              color: Colors.primaries[0],
+              onPressed: () {
+                _handleSignOut()
+                  .then((_) => _setUser(null))
+                  .catchError((e) => print(e));
+              },
+              child: Text('ログアウト'),
+            )
           ],
         ),
       ),
