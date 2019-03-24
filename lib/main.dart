@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() => runApp(MyApp());
 
@@ -47,6 +48,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  DateTime _lastSignedInAt = null;
   FirebaseUser _user;
 
   void _setUser(FirebaseUser user) {
@@ -66,7 +68,19 @@ class _MyHomePageState extends State<MyHomePage> {
       idToken: googleAuth.idToken
     );
     final FirebaseUser user = await _auth.signInWithCredential(credential);
-    return user;
+    return _recordSignIn(user).then((_) async  {
+      _lastSignedInAt = await Firestore.instance.collection('users').document(user.uid).get().then((snapshot) {
+        return snapshot['lastSignedInAt'].toDate();
+      });
+      return user;
+    });
+  }
+
+  Future<void> _recordSignIn(FirebaseUser user) async {
+    return Firestore.instance.collection('users').document(user.uid).setData({
+      'email': user.email,
+      'lastSignedInAt': DateTime.now(),
+    });
   }
 
   Future<void> _handleSignOut() async {
@@ -152,6 +166,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   .catchError((e) => print(e));
               },
               child: Text('ログアウト'),
+            ),
+            Text(
+              '最終ログイン日時: $_lastSignedInAt',
             )
           ],
         ),
