@@ -1,91 +1,99 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-void main() => runApp(PranzoApp());
-
-class PranzoApp extends StatelessWidget {
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pranzo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: PranzoHomePage(title: 'Pranzo Home Page'),
-    );
-  }
+void main() {
+  runApp(MaterialApp(
+    title: 'Pranzo',
+    home: SignInPage(),
+  ));
 }
 
-class PranzoHomePage extends StatefulWidget {
-  PranzoHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  _PranzoHomePageState createState() => _PranzoHomePageState();
-}
-
-class _PranzoHomePageState extends State<PranzoHomePage> {
-  DateTime _lastSignedInAt;
-  FirebaseUser _user;
-  GoogleMapController _mapController;
-
-  void _setUser(FirebaseUser user) {
-    setState(() {
-      _user = user;
-    });
-  }
-
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class SignInPage extends StatelessWidget {
+  SignInPage({Key key}): super(key: key);
 
   Future<FirebaseUser> _handleSignIn() async {
-    final GoogleSignInAccount googleUser = await _googleSignIn.signIn();
+    final GoogleSignInAccount googleUser = await GoogleSignIn().signIn();
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
     final AuthCredential credential = GoogleAuthProvider.getCredential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken
     );
-    final FirebaseUser user = await _auth.signInWithCredential(credential);
-    return _recordSignIn(user).then((_) async  {
-      _lastSignedInAt = await Firestore.instance.collection('users').document(user.uid).get().then((snapshot) {
-        return snapshot['lastSignedInAt'].toDate();
-      });
-      return user;
-    });
+    return FirebaseAuth.instance.signInWithCredential(credential);
   }
 
-  Future<void> _recordSignIn(FirebaseUser user) async {
+  Future<FirebaseUser> _recordSignIn(FirebaseUser user) async {
     return Firestore.instance.collection('users').document(user.uid).setData({
       'email': user.email,
       'lastSignedInAt': DateTime.now(),
+    }).then((_) => user);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(
+        title: Text('Sign in'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            RaisedButton(
+              color: Colors.primaries[0],
+              onPressed: () {
+                _handleSignIn()
+                  .then((FirebaseUser user) => _recordSignIn(user))
+                  .then((FirebaseUser user) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HomePage(user: user)
+                      ),
+                    );
+                  })
+                  .catchError((e) => print(e));
+              },
+              child: Text('Googleアカウントでログイン'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  final FirebaseUser user;
+  HomePage({Key key, @required this.user}): super(key: key);
+
+  @override
+  _HomePageState createState() => _HomePageState(user);
+}
+
+class _HomePageState extends State<HomePage> {
+  FirebaseUser _user;
+  _HomePageState(this._user);
+
+  DateTime _lastSignedInAt;
+  GoogleMapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    Firestore.instance.collection('users').document(_user.uid).get().then((snapshot) {
+      setState(() {
+        _lastSignedInAt = snapshot['lastSignedInAt'].toDate();
+      });
     });
   }
 
   Future<void> _handleSignOut() async {
-    return await _auth.signOut();
+    return await FirebaseAuth.instance.signOut();
   }
 
   void _handleMapCreate(GoogleMapController controller) {
@@ -94,70 +102,35 @@ class _PranzoHomePageState extends State<PranzoHomePage> {
     });
   }
 
-  Widget googleAuthBtn() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          RaisedButton(
-            color: Colors.primaries[0],
-            onPressed: () {
-              _handleSignIn()
-                .then((FirebaseUser user) => _setUser(user))
-                .catchError((e) => print(e));
-            },
-            child: Text('Googleアカウントでログイン'),
-          )
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('Home'),
       ),
-      body: _user == null ? googleAuthBtn() : Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      body: Center(
         child: Column(
-          // Column is also layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             RaisedButton(
               color: Colors.primaries[0],
               onPressed: () {
                 _handleSignOut()
-                  .then((_) => _setUser(null))
+                  .then((_) => {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SignInPage()
+                      ),
+                      (_) => false
+                    )
+                  })
                   .catchError((e) => print(e));
               },
               child: Text('ログアウト'),
             ),
             Text(
-              '最終ログイン日時: $_lastSignedInAt',
+              _lastSignedInAt != null ? '最終ログイン日時: $_lastSignedInAt' : '',
             ),
             Container(
               height: MediaQuery.of(context).size.height / 2,
