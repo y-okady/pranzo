@@ -4,14 +4,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(PranzoApp());
 
-class MyApp extends StatelessWidget {
+class PranzoApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Pranzo',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -24,13 +24,13 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: PranzoHomePage(title: 'Pranzo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+class PranzoHomePage extends StatefulWidget {
+  PranzoHomePage({Key key, this.title}) : super(key: key);
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -44,10 +44,10 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _PranzoHomePageState createState() => _PranzoHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _PranzoHomePageState extends State<PranzoHomePage> {
   DateTime _lastSignedInAt;
   FirebaseUser _user;
   GoogleMapController _mapController;
